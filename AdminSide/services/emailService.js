@@ -1,6 +1,41 @@
 // emailService.js - Place this in your services folder
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-const EMAIL_SERVICE_URL ='http://172.20.10.14:3002'; // Change this to your deployed email service URL
+// Resolve the Email Service base URL dynamically so it works across different networks
+const resolveEmailServiceBaseUrl = () => {
+  // 1) Explicit override via Expo public env (best for production)
+  const explicitUrl = process.env.EXPO_PUBLIC_EMAIL_SERVICE_URL;
+  if (explicitUrl && typeof explicitUrl === 'string') {
+    return explicitUrl.replace(/\/$/, '');
+  }
+
+  // 2) Determine host from Expo dev server info (works in Expo Go)
+  const hostUri =
+    Constants?.expoConfig?.hostUri ||
+    Constants?.manifest?.debuggerHost ||
+    Constants?.manifest2?.extra?.expoClient?.hostUri ||
+    Constants?.manifest2?.extra?.expoGo?.debuggerHost ||
+    '';
+
+  // hostUri examples: "192.168.1.5:19000", "192.168.1.5:8081"
+  const hostFromExpo = hostUri ? hostUri.split(':')[0] : undefined;
+
+  // 3) For web builds, prefer the current origin host
+  const webHost = typeof window !== 'undefined' && window.location ? window.location.hostname : undefined;
+
+  const host = hostFromExpo || webHost || 'localhost';
+
+  // Allow port override; default to 3002 to match prior setup
+  const port = process.env.EXPO_PUBLIC_EMAIL_SERVICE_PORT || '3002';
+
+  // Special case for Android emulator (not Expo Go on device). Keeping here for completeness.
+  const finalHost = Platform.OS === 'android' && host === 'localhost' ? '10.0.2.2' : host;
+
+  return `http://${finalHost}:${port}`;
+};
+
+const EMAIL_SERVICE_URL = resolveEmailServiceBaseUrl();
 
 class EmailService {
   
